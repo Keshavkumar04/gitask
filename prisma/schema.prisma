@@ -1,0 +1,135 @@
+// generator client {
+//   provider = "prisma-client"
+//   output   = "../app/generated/prisma"
+// }
+
+// datasource db {
+//   provider = "postgresql"
+// }
+
+// model User {
+//   id            String    @id @default(cuid())
+//   name          String
+//   email         String
+//   emailVerified Boolean
+//   image         String?
+//   createdAt     DateTime
+//   updatedAt     DateTime
+//   sessions      Session[]
+//   accounts      Account[]
+// }
+
+// model Session {
+//   id        String   @id @default(cuid())
+//   expiresAt DateTime
+//   ipAddress String?
+//   userAgent String?
+//   userId    String
+//   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+// }
+
+// model Account {
+//   id           String    @id @default(cuid())
+//   accountId    String
+//   providerId   String
+//   userId       String
+//   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   accessToken  String?
+//   refreshToken String?
+//   idToken      String?
+//   expiresAt    DateTime?
+//   password     String?
+// }
+
+// model Verification {
+//   id         String   @id @default(cuid())
+//   identifier String
+//   value      String
+//   expiresAt  DateTime
+// }
+
+generator client {
+  provider        = "prisma-client-js"
+  // CHANGED: Was "prisma-client"
+  // previewFeatures = ["driverAdapters"]
+  // ADDED: Required for the 'pg' adapter fix
+  // output       = "../app/generated/prisma" // REMOVED: See note below
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique // ADDED: @unique is usually required for auth
+  emailVerified Boolean
+  image         String?
+  createdAt     DateTime
+  updatedAt     DateTime
+  sessions      Session[]
+  accounts      Account[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  expiresAt             DateTime?
+  password              String?
+  createdAt             DateTime  @default(now()) // Add this
+  updatedAt             DateTime  @updatedAt // Add this
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now()) // Required by Better Auth
+  updatedAt  DateTime? @updatedAt // Required by Better Auth
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+
+
+model Project {
+  id        String      @id @default(cuid())
+  name      String
+  githubUrl String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  deletedAt DateTime?
+}
