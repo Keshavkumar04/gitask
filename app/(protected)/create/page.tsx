@@ -3,6 +3,10 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
+import { useTRPC } from "@/lib/trpc/client"; // <--- 1. Import hook
+import { toast } from "sonner";
+import { useMutation } from "@tanstack/react-query";
+import { useRefetch } from "@/hooks/use-refetch";
 
 type FormInput = {
   repoUrl: string;
@@ -12,10 +16,44 @@ type FormInput = {
 
 const CreatePage = () => {
   const { register, handleSubmit, reset } = useForm<FormInput>();
+  const refetch = useRefetch();
+  const trpc = useTRPC();
+
+  //   function onSubmit(data: FormInput) {
+  //     console.log(data);
+  //     return true;
+  //   }
+
+  //   const createProject = trpc.project.createProject.useMutation({
+  //     onSuccess: () => {
+  //       toast.success("Project created!");
+  //       reset(); // Clear the form
+  //     },
+  //     onError: () => {
+  //       toast.error("Failed to create Project");
+  //     },
+  //   });
+
+  //   function onSubmit(data: FormInput) {
+  //     // <--- 4. Call the mutation
+  //     createProject.mutate(data);
+  //   }
+
+  const createProject = useMutation({
+    ...trpc.project.createProject.mutationOptions(), // Spread the tRPC options here
+    onSuccess: () => {
+      toast.success("Project created!");
+      refetch();
+      reset();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to create project");
+    },
+  });
 
   function onSubmit(data: FormInput) {
-    console.log(data);
-    return true;
+    // 3. The call remains the same
+    createProject.mutate(data);
   }
 
   return (
@@ -42,7 +80,9 @@ const CreatePage = () => {
             placeholder="Github Token (Optional)"
           />
 
-          <Button type="submit">Create Project</Button>
+          <Button type="submit" disabled={createProject.isPending}>
+            Create Project
+          </Button>
         </form>
       </div>
     </div>
