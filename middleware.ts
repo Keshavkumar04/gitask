@@ -6,7 +6,7 @@ export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   // 1. Define paths that don't require authentication
-  const publicPaths = ["/", "/login"];
+  const publicPaths = ["/", "/api/webhook/stripe(.*)"];
 
   // 2. Check for the session cookie
   // Better Auth uses "better-auth.session_token" by default
@@ -20,11 +20,11 @@ export function middleware(request: NextRequest) {
   // A. If user is trying to access a protected route AND has no cookie -> Redirect to login
   const isPublicPath = publicPaths.includes(path);
   if (!isPublicPath && !sessionCookie) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
-  // B. If user is ALREADY logged in and tries to go to /login -> Redirect to dashboard
-  if (isPublicPath && sessionCookie && path !== "/") {
+  // B. If user is ALREADY logged in and on the home page -> Redirect to dashboard
+  if (isPublicPath && sessionCookie) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
@@ -36,6 +36,6 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     // Match all paths except static files, images, and the API (very important for auth to work!)
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)",
   ],
 };

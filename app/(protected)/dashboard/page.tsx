@@ -1,66 +1,93 @@
-// import { auth } from "@/lib/auth"; // import from your server config
-// import { headers } from "next/headers";
-// import { redirect } from "next/navigation";
+"use client";
 
-// export default async function DashboardPage() {
-//   const session = await auth.api.getSession({
-//     headers: await headers(),
-//   });
-
-//   if (!session) {
-//     return redirect("/"); // Redirect if not logged in
-//   }
-
-//   return (
-//     <main>
-//       <h1>Welcome, {session.user.name}!</h1>
-//       <p>Email: {session.user.email}</p>
-//       <img
-//         src={session.user.image || ""}
-//         alt="Avatar"
-//         width={50}
-//         height={50}
-//         style={{ borderRadius: "50%" }}
-//       />
-//     </main>
-//   );
-// }
-
-// app/dashboard/page.tsx
-"use client"; // We use a client component to start simple
-
+import AskQuestionCard from "@/components/AskQuestionCard";
+import CommitLog from "@/components/CommitLog";
+import InviteButton from "@/components/InviteButton";
+import TeamMembers from "@/components/TeamMembers";
 import { useProject } from "@/hooks/use-project";
 import { useTRPC } from "@/lib/trpc/client";
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLink, Github } from "lucide-react";
+import { ExternalLink, Github, Plus } from "lucide-react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
   const trpc = useTRPC();
   const { project } = useProject();
 
-  // Call the 'user.me' procedure we created earlier
-  const { data, isLoading } = useQuery(trpc.user.me.queryOptions());
+  const { data: projects, isLoading: projectsLoading } = useQuery(
+    trpc.project.getProjects.queryOptions(),
+  );
 
-  if (isLoading) return <div>Loading user data...</div>;
+  const { data: user, isLoading: userLoading } = useQuery(
+    trpc.user.me.queryOptions(),
+  );
+
+  if (projectsLoading || userLoading) return null;
+
+  if (!project && (!projects || projects.length === 0)) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[80vh] gap-6 text-center">
+        <div className="bg-white p-8 rounded-xl shadow-sm border max-w-md w-full">
+          <div className="flex justify-center mb-4">
+            <Github className="w-12 h-12 text-gray-400" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            No projects yet
+          </h1>
+          <p className="text-sm text-gray-500 mb-6">
+            Link a GitHub repository to get started with Code Council.
+          </p>
+          <Link href="/create">
+            <Button className="w-full">
+              <Plus className="w-4 h-4 mr-2" />
+              Create Project
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <div>
-        <div>
-          <Github />
-          <p>
-            This project is linkden to{" "}
-            <Link href={project?.githubUrl ?? ""}>
-              {project?.githubUrl}
-              <ExternalLink />
-            </Link>
-          </p>
+    <div className="container mx-auto max-w-5xl px-4 py-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+        <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow-sm border">
+          <Github className="h-4 w-4 text-gray-700" />
+          <div className="h-4 w-px bg-gray-200 mx-2"></div>
+          <span className="text-xs font-medium text-gray-600">
+            This project is linked to
+          </span>
+          <Link
+            href={project?.githubUrl ?? ""}
+            target="_blank"
+            className="inline-flex items-center gap-1 text-primary hover:underline font-semibold text-xs"
+          >
+            {project?.githubUrl}
+            <ExternalLink className="h-3 w-3" />
+          </Link>
         </div>
-        <div>team members invite button archive button</div>
-        <div>Ask question card</div>
+
+        <div className="flex items-center gap-3">
+          <TeamMembers />
+          <InviteButton />
+        </div>
       </div>
-      <div>commit log</div>
+
+      <div className="space-y-4">
+        <div>
+          <AskQuestionCard />
+        </div>
+
+        <div className="bg-white rounded-xl border shadow-sm p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-semibold text-gray-900">
+              Commit History
+            </h2>
+          </div>
+          <CommitLog />
+        </div>
+      </div>
     </div>
   );
 }

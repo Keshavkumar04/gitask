@@ -1,11 +1,9 @@
-// server/api/trpc.ts
 import { initTRPC, TRPCError } from "@trpc/server";
-import { auth } from "@/lib/auth"; // Your Better Auth config
-import { prisma } from "@/lib/prisma"; // Your Prisma Client
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { headers } from "next/headers";
-import SuperJSON from "superjson"; // Ensure you install this: npm install superjson
+import SuperJSON from "superjson";
 
-// 1. CONTEXT: Runs for every request
 export const createTRPCContext = async (opts: { headers: Headers }) => {
   const session = await auth.api.getSession({
     headers: opts.headers,
@@ -19,9 +17,8 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
   };
 };
 
-// 2. INITIALIZATION
 const t = initTRPC.context<typeof createTRPCContext>().create({
-  transformer: SuperJSON, // Allows dates/Maps/Sets to work correctly
+  transformer: SuperJSON,
   errorFormatter({ shape, error }) {
     return {
       ...shape,
@@ -36,7 +33,6 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
   },
 });
 
-// 3. EXPORTS: Reusable pieces
 export const createTRPCRouter = t.router;
 export const publicProcedure = t.procedure;
 

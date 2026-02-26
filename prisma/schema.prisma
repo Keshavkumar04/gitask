@@ -1,27 +1,31 @@
 generator client {
   provider        = "prisma-client-js"
-  // CHANGED: Was "prisma-client"
-  // previewFeatures = ["driverAdapters"]
-  // ADDED: Required for the 'pg' adapter fix
-  // output       = "../app/generated/prisma" // REMOVED: See note below
+  previewFeatures = ["postgresqlExtensions"]
+
 }
 
 datasource db {
   provider = "postgresql"
+  extensions = [vector]
 }
 
 model User {
   id            String    @id @default(cuid())
   name          String
-  email         String    @unique // ADDED: @unique is usually required for auth
+  email         String    @unique 
   emailVerified Boolean
   image         String?
   createdAt     DateTime
   updatedAt     DateTime
+  credits       Int @default(150) 
   sessions      Session[]
   accounts      Account[]
 
   userToProjects UserToProject[]
+
+  questionsAsked Question[]
+
+  StripeTransactions StripeTransaction[]
 
   @@map("user")
 }
@@ -87,6 +91,9 @@ model Project {
 
   userToProjects UserToProject[]
   commits Commit[]
+  sourceCodeEmbeddings SourceCodeEmbedding[]
+  
+  savedQuestions Question[]
 }
 
 
@@ -99,7 +106,7 @@ model UserToProject {
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id])
-  project Project @relation(fields: [projectId], references: [id])
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([userId,projectId])
 
@@ -111,7 +118,7 @@ model Commit {
   updatedAt DateTime @updatedAt
 
   projectId String
-  project Project @relation(fields: [projectId], references: [id])
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   commitMessage String
   commitHash String
@@ -119,4 +126,47 @@ model Commit {
   commitAuthorAvatar String
   commitDate String
   summary String
+}
+
+
+model SourceCodeEmbedding {
+  id String @id @default(cuid())
+
+  summaryEmbedding Unsupported("vector(768)")?
+  sourceCode String
+  fileName String
+  summary String
+
+  projectId String
+  project Project @relation(fields: [projectId],references: [id], onDelete: Cascade)
+}
+
+
+model Question {
+  id String @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  question String
+  answer String
+  filesReferences Json?
+
+  projectId String
+  project Project @relation(fields: [projectId],references: [id], onDelete: Cascade)
+
+  userId String
+  user User @relation(fields: [userId],references: [id])
+}
+
+
+model StripeTransaction {
+  id String @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user User @relation(fields: [userId], references: [id])
+
+  credits Int
+
 }

@@ -15,16 +15,21 @@ type Response = {
   commitDate: string;
 };
 
-// 1. Helper to extract Owner and Repo from a GitHub URL
-// Example: "https://github.com/facebook/react" -> { owner: "facebook", repo: "react" }
-const getRepoInfo = (githubUrl: string) => {
-  const parts = githubUrl.split("/");
+// extract Owner and Repo from a GitHub URL
+// Example: "https://github.com/facebook/react.git" -> { owner: "facebook", repo: "react" }
+export const getRepoInfo = (githubUrl: string) => {
+  const cleanUrl = githubUrl
+    .replace(/\/$/, "") // Remove trailing slash ("react/" -> "react")
+    .replace(/\.git$/, ""); // Remove .git ("react.git" -> "react")
+
+  const parts = cleanUrl.split("/");
   const owner = parts[parts.length - 2];
   const repo = parts[parts.length - 1];
 
   if (!owner || !repo) {
     throw new Error("Invalid GitHub URL");
   }
+
   return { owner, repo };
 };
 
@@ -54,13 +59,10 @@ export const getCommitHashes = async (
 };
 
 export const pollCommits = async (projectId: string) => {
-  // 1. Fetch the Project URL from prisma
   const { project, githubUrl } = await fetchProjectGithubUrl(projectId);
 
-  // 2. Fetch the latest commits from GitHub API
   const commitHashes = await getCommitHashes(githubUrl);
 
-  // 3. Filter out commits we have already saved in our prisma
   const unprocessedCommits = await filterUnprocessedCommits(
     projectId,
     commitHashes,
@@ -81,7 +83,7 @@ export const pollCommits = async (projectId: string) => {
 
   const commits = await prisma.commit.createMany({
     data: summaries.map((summary, index) => {
-      console.log(`processing commits ${index}`);
+      // console.log(`processing commits ${index}`);
       return {
         projectId: projectId,
         commitHash: unprocessedCommits[index]!.commitHash,
@@ -94,17 +96,16 @@ export const pollCommits = async (projectId: string) => {
     }),
   });
 
-  // 4. (Optional) Save the new commits to your prisma here
   // return await prisma.commit.createMany({ data: unprocessedCommits.map(...) })
 
   return commits;
 };
 
-// before saving the commits we need to sumarize them
 const summarizeCommit = async (githubUrl: string, commitHash: string) => {
   // get the diff and then pass the diff to the ai
   // https://github.com/facebook/react/commit/<commitHash>.dff
-  const { data } = await axios.get(`${githubUrl}/commit/${commitHash}.diff`, {
+  const cleanUrl = githubUrl.replace(/\.git$/, "");
+  const { data } = await axios.get(`${cleanUrl}/commit/${commitHash}.diff`, {
     headers: {
       Accept: `application/vnd.github.v3.diff`,
     },
@@ -131,14 +132,10 @@ const filterUnprocessedCommits = async (
   projectId: string,
   commitHashes: Response[],
 ) => {
-  // Get all stored commits for this project
   const storedCommits = await prisma.commit.findMany({
     where: { projectId },
   });
 
-  // Create a Set for O(1) lookups
   const storedHashes = new Set(storedCommits.map((c) => c.commitHash));
-
-  // Return only the commits that DO NOT exist in our prisma
   return commitHashes.filter((commit) => !storedHashes.has(commit.commitHash));
 };
