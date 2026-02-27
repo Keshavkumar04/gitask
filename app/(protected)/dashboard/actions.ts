@@ -65,6 +65,6 @@ export async function askQuestion(question: string, projectId: string) {
 
   return {
     answer,
-    filesReferences: result,
+    filesReferences: result.filter((r) => r.fileName !== "_PROJECT_SUMMARY_"),
   };
 }
