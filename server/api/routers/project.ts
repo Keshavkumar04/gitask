@@ -48,6 +48,7 @@ export const projectRouter = createTRPCRouter({
         data: {
           name: input.projectName,
           githubUrl: cleanRepoUrl,
+          fileCount,
           userToProjects: {
             create: {
               userId: ctx.user.id!,

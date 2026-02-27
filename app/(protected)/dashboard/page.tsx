@@ -81,10 +81,17 @@ export default function Dashboard() {
       {project?.status === "INDEXING" && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 mb-4 flex items-center gap-2">
           <Loader2 className="h-4 w-4 animate-spin text-yellow-600" />
-          <span className="text-sm text-yellow-800">
-            This project is being indexed. You can ask questions once indexing
-            is complete.
-          </span>
+          <div className="text-sm text-yellow-800">
+            <span>
+              This project is being indexed. You can ask questions once indexing
+              is complete.
+            </span>
+            {project.fileCount && (
+              <span className="block text-xs text-yellow-600 mt-1">
+                Estimated time: ~{Math.max(1, Math.ceil((project.fileCount * 7) / 60))} minutes ({project.fileCount} files)
+              </span>
+            )}
+          </div>
         </div>
       )}
 

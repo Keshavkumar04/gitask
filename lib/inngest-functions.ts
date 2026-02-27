@@ -1,6 +1,6 @@
 import { inngest } from "./inngest";
 import { loadGithubRepo } from "./loadGithubRepo";
-import { summariseCode, generateEmbedding } from "./gemini";
+import { summariseCode, generateEmbedding, generateProjectSummary } from "./gemini";
 import { pollCommits } from "./github";
 import { prisma } from "./prisma";
 
@@ -77,12 +77,41 @@ export const indexGithubRepoFunction = inngest.createFunction(
       }
     }
 
-    // Step 3: Poll commits
+    // Step 3: Generate project-level summary from all file summaries
+    await step.run("generate-project-summary", async () => {
+      const allSummaries = await prisma.sourceCodeEmbedding.findMany({
+        where: { projectId },
+        select: { fileName: true, summary: true },
+      });
+
+      if (allSummaries.length > 0) {
+        const projectSummary = await generateProjectSummary(allSummaries);
+        const embedding = await generateEmbedding(projectSummary);
+
+        const record = await prisma.sourceCodeEmbedding.create({
+          data: {
+            summary: projectSummary,
+            sourceCode: "This is an auto-generated project overview.",
+            fileName: "_PROJECT_SUMMARY_",
+            projectId,
+          },
+        });
+
+        const embeddingVector = `[${embedding.join(",")}]`;
+        await prisma.$executeRaw`
+          UPDATE "SourceCodeEmbedding"
+          SET "summaryEmbedding" = ${embeddingVector}::vector
+          WHERE "id" = ${record.id}
+        `;
+      }
+    });
+
+    // Step 4: Poll commits
     await step.run("poll-commits", async () => {
       await pollCommits(projectId);
     });
 
-    // Step 4: Update project status
+    // Step 5: Update project status
     await step.run("update-project-status", async () => {
       if (successCount === 0 && docs.length > 0) {
         // Total failure — refund credits

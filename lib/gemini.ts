@@ -151,27 +151,31 @@ export const summariseCode = async (doc: Document) => {
       messages: [
         {
           role: "system",
-          content: `You are an intelligent senior software engineer specializing in indexing code for vector search.
-          
-          STRICT OUTPUT INSTRUCTIONS:
-          1. DO NOT use conversational filler ("This file is...", "Here is a summary").
-          2. START directly with the technical summary.
-          3. INCLUDE specific keywords: library names (e.g., "NextAuth", "Clerk"), function names, and exported variables.
-          4. MENTION the specific role of the file (e.g., "Authentication configuration", "API Route", "UI Component").
-          
-          Example Summary:
-          "Next.js API route handler for user authentication. Implements OAuth2 providers (Google, GitHub) using NextAuth.js. Exports authOptions configuration object containing session strategies, JWT callbacks, and secret keys. Handles GET and POST requests for /api/auth/[...nextauth]."`,
+          content: `You are a code indexer for a vector search database. Your summary will be embedded and matched against user questions like "what libraries does this project use?", "which AI model is used?", "where are API calls made?", "how does authentication work?".
+
+STRICT OUTPUT FORMAT — use this exact structure:
+ROLE: [one-line description, e.g. "API route handler for webhooks"]
+LIBRARIES: [every imported library/package, e.g. "express, openai, drizzle-orm, zod"]
+EXTERNAL SERVICES: [any APIs, AI models, databases, SDKs called, e.g. "OpenAI GPT-4, Stripe API, PostgreSQL, Stream.io"]
+EXPORTS: [exported functions/variables/types, e.g. "POST handler, GET handler"]
+KEY DETAILS: [2-3 sentences on what the code does, mentioning function names, endpoints, data flow]
+
+RULES:
+1. List EVERY import/require — do not skip any library.
+2. If the file calls an AI model (OpenAI, Gemini, Anthropic, Ollama, etc.), name the EXACT model string (e.g. "gpt-4o", "gemini-2.5-flash").
+3. If the file is package.json, list ALL dependencies and devDependencies by name.
+4. If the file makes HTTP/fetch/API calls, state the URL or service.
+5. Keep total output under 150 words. No filler, no markdown formatting.`,
         },
         {
           role: "user",
-          content: `Summarize the following code for a vector database index. 
-          File Name: ${doc.metadata.source}
-          
-          Code:
-          ---
-          ${code}
-          ---
-          `,
+          content: `Index this file for vector search.
+File: ${doc.metadata.source}
+
+Code:
+---
+${code}
+---`,
         },
       ],
     });
@@ -184,6 +188,44 @@ export const summariseCode = async (doc: Document) => {
     );
     return `File path: ${doc.metadata.source}`;
   }
+};
+
+export const generateProjectSummary = async (
+  fileSummaries: { fileName: string; summary: string }[],
+) => {
+  const summaryList = fileSummaries
+    .map((f) => `${f.fileName}: ${f.summary.slice(0, 200)}`)
+    .join("\n")
+    .slice(0, 12000);
+
+  const response = await ollama.chat({
+    model: "qwen3:8b",
+    messages: [
+      {
+        role: "system",
+        content: `You generate a comprehensive project overview from individual file summaries. This will be stored in a vector database and matched against broad questions like "what does this project do?", "what tech stack is used?", "what is this app about?".
+
+OUTPUT FORMAT:
+PROJECT OVERVIEW: [2-3 sentences describing what the app/project does]
+TECH STACK: [list ALL frameworks, languages, libraries found across files]
+AI/ML: [any AI models, ML libraries, or LLM integrations found — list model names]
+EXTERNAL SERVICES: [all third-party APIs, databases, cloud services]
+KEY FEATURES: [main features/modules of the application]
+ARCHITECTURE: [e.g. "Next.js frontend + tRPC API + PostgreSQL", mention any patterns]
+
+RULES:
+1. Aggregate info from ALL file summaries — do not focus on just a few files.
+2. Be specific — name exact libraries, not "various libraries".
+3. Keep under 200 words. No filler.`,
+      },
+      {
+        role: "user",
+        content: `Generate a project overview from these file summaries:\n\n${summaryList}`,
+      },
+    ],
+  });
+
+  return stripThinking(response.message.content);
 };
 
 export const generateEmbedding = async (summary: string) => {
