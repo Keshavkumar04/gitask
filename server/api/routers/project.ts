@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { pollCommits } from "@/lib/github";
-import { checkCredits, indexGithubRepo } from "@/lib/loadGithubRepo";
+import { checkCredits } from "@/lib/loadGithubRepo";
+import { inngest } from "@/lib/inngest";
 
 export const projectRouter = createTRPCRouter({
   createProject: protectedProcedure
@@ -52,26 +53,22 @@ export const projectRouter = createTRPCRouter({
               userId: ctx.user.id!,
             },
           },
-          // Note: We aren't saving 'githubToken' to the DB in your schema yet,
-          // but we can use it here later to fetch repo details if needed.
         },
       });
-      try {
-        await indexGithubRepo(project.id, cleanRepoUrl, githubToken);
-        await pollCommits(project.id);
-        return project;
-      } catch (error) {
-        // If indexing fails, delete the project and refund credits
-        await ctx.db.project.delete({
-          where: { id: project.id },
-        });
-        await ctx.db.user.update({
-          where: { id: ctx.user.id },
-          data: { credits: { increment: fileCount } },
-        });
 
-        throw error;
-      }
+      // Fire-and-forget: Inngest handles indexing in the background
+      await inngest.send({
+        name: "project/index.requested",
+        data: {
+          projectId: project.id,
+          githubUrl: cleanRepoUrl,
+          githubToken: githubToken || null,
+          userId: ctx.user.id!,
+          fileCount,
+        },
+      });
+
+      return project;
     }),
   getProjects: protectedProcedure.query(async ({ ctx }) => {
     return await ctx.db.project.findMany({

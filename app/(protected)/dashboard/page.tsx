@@ -7,7 +7,7 @@ import TeamMembers from "@/components/TeamMembers";
 import { useProject } from "@/hooks/use-project";
 import { useTRPC } from "@/lib/trpc/client";
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLink, Github, Plus } from "lucide-react";
+import { ExternalLink, Github, Loader2, Plus } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -15,9 +15,11 @@ export default function Dashboard() {
   const trpc = useTRPC();
   const { project } = useProject();
 
-  const { data: projects, isLoading: projectsLoading } = useQuery(
-    trpc.project.getProjects.queryOptions(),
-  );
+  const { data: projects, isLoading: projectsLoading } = useQuery({
+    ...trpc.project.getProjects.queryOptions(),
+    refetchInterval: (query) =>
+      query.state.data?.some((p) => p.status === "INDEXING") ? 5000 : false,
+  });
 
   const { data: user, isLoading: userLoading } = useQuery(
     trpc.user.me.queryOptions(),
@@ -27,20 +29,22 @@ export default function Dashboard() {
 
   if (!project && (!projects || projects.length === 0)) {
     return (
-      <div className="flex flex-col items-center justify-center h-[80vh] gap-6 text-center">
-        <div className="bg-white p-8 rounded-xl shadow-sm border max-w-md w-full">
-          <div className="flex justify-center mb-4">
-            <Github className="w-12 h-12 text-gray-400" />
+      <div className="flex items-center justify-center h-full p-4">
+        <div className="w-full max-w-xs text-center">
+          <div className="flex items-center justify-center mb-4">
+            <div className="flex items-center justify-center size-10 rounded-full bg-primary/10">
+              <Github className="h-5 w-5 text-primary" />
+            </div>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          <h1 className="text-base font-semibold text-gray-900">
             No projects yet
           </h1>
-          <p className="text-sm text-gray-500 mb-6">
-            Link a GitHub repository to get started with Code Council.
+          <p className="text-xs text-gray-500 mt-1 mb-5">
+            Link a GitHub repository to get started.
           </p>
           <Link href="/create">
-            <Button className="w-full">
-              <Plus className="w-4 h-4 mr-2" />
+            <Button size="sm" className="w-full text-xs">
+              <Plus className="w-3.5 h-3.5 mr-1.5" />
               Create Project
             </Button>
           </Link>
@@ -74,19 +78,45 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {project?.status === "INDEXING" && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 mb-4 flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin text-yellow-600" />
+          <span className="text-sm text-yellow-800">
+            This project is being indexed. You can ask questions once indexing
+            is complete.
+          </span>
+        </div>
+      )}
+
+      {project?.status === "FAILED" && (
+        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-4">
+          <span className="text-sm text-red-800">
+            Indexing failed for this project. Your credits have been refunded.
+          </span>
+        </div>
+      )}
+
       <div className="space-y-4">
         <div>
-          <AskQuestionCard />
+          {project?.status === "READY" ? (
+            <AskQuestionCard />
+          ) : project?.status === "INDEXING" ? (
+            <div className="rounded-lg border bg-white p-6 text-center text-sm text-gray-500">
+              Indexing in progress... Questions will be available once complete.
+            </div>
+          ) : null}
         </div>
 
-        <div className="bg-white rounded-xl border shadow-sm p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-gray-900">
-              Commit History
-            </h2>
+        {project?.status === "READY" && (
+          <div className="bg-white rounded-xl border shadow-sm p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold text-gray-900">
+                Commit History
+              </h2>
+            </div>
+            <CommitLog />
           </div>
-          <CommitLog />
-        </div>
+        )}
       </div>
     </div>
   );

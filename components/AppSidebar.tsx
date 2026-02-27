@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   LogOut,
   Plus,
+  Loader2,
   Trash2,
 } from "lucide-react";
 import {
@@ -74,9 +75,12 @@ export const Appsidebar = () => {
 
   const deleteProject = useMutation({
     ...trpc.project.deleteProject.mutationOptions(),
-    onSuccess: () => {
+    onSuccess: async () => {
+      if (projectToDelete?.id === projectId) {
+        setProjectId("");
+      }
       setProjectToDelete(null);
-      refetch();
+      await refetch();
     },
   });
 
@@ -155,6 +159,12 @@ export const Appsidebar = () => {
                           {project.name[0]}
                         </div>
                         <span className="flex-1 truncate">{project.name}</span>
+                        {project.status === "INDEXING" && (
+                          <Loader2 className="h-3 w-3 animate-spin text-yellow-500 shrink-0" />
+                        )}
+                        {project.status === "FAILED" && (
+                          <span className="text-red-500 text-xs font-bold shrink-0">!</span>
+                        )}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();

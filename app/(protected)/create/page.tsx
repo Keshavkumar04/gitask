@@ -43,7 +43,7 @@ const CreatePage = () => {
   const createProject = useMutation({
     ...trpc.project.createProject.mutationOptions(),
     onSuccess: () => {
-      toast.success("Project created successfully!");
+      toast.success("Project created! Indexing in the background.");
       refetch();
       reset();
       setHasChecked(false);
@@ -147,9 +147,6 @@ const CreatePage = () => {
                 <>
                   <Loader2 className="mr-2 h-3 w-3 animate-spin" />
                   <span>Creating...</span>
-                  <span className="text-xs">
-                    this may take a while for large repos
-                  </span>
                 </>
               ) : (
                 `Create Project`
