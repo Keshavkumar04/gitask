@@ -17,10 +17,17 @@ export const projectRouter = createTRPCRouter({
         .replace(/\/$/, "") // Remove slash
         .replace(/\.git$/, ""); // remove .git
 
+      // Use the user's GitHub OAuth token from sign-in
+      const account = await ctx.db.account.findFirst({
+        where: { userId: ctx.user.id, providerId: "github" },
+        select: { accessToken: true },
+      });
+      const githubToken = input.githubToken || account?.accessToken || undefined;
+
       const fileCount = await checkCredits(
         cleanRepoUrl,
         ctx.user.id!,
-        input.githubToken,
+        githubToken,
       );
       const user = await ctx.db.user.findUnique({
         where: { id: ctx.user.id },
@@ -50,7 +57,7 @@ export const projectRouter = createTRPCRouter({
         },
       });
       try {
-        await indexGithubRepo(project.id, cleanRepoUrl, input.githubToken);
+        await indexGithubRepo(project.id, cleanRepoUrl, githubToken);
         await pollCommits(project.id);
         return project;
       } catch (error) {
@@ -169,10 +176,17 @@ export const projectRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const cleanUrl = input.githubUrl.replace(/\/$/, "").replace(/\.git$/, "");
+
+      const account = await ctx.db.account.findFirst({
+        where: { userId: ctx.user.id, providerId: "github" },
+        select: { accessToken: true },
+      });
+      const githubToken = input.githubToken || account?.accessToken || undefined;
+
       const fileCount = await checkCredits(
         cleanUrl,
         ctx.user.id!,
-        input.githubToken,
+        githubToken,
       );
       const user = await ctx.db.user.findUnique({
         where: { id: ctx.user.id },

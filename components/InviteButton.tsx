@@ -14,7 +14,7 @@ const InviteButton = () => {
   return (
     <>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Invite Team Members</DialogTitle>
             <p className="text-sm text-gray-500">

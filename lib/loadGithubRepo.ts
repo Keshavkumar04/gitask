@@ -5,7 +5,7 @@ import { prisma } from "./prisma";
 import { Octokit } from "octokit";
 
 export const getFileCount = async (githubUrl: string, githubToken?: string) => {
-  const octokit = new Octokit({ auth: githubToken });
+  const octokit = new Octokit({ auth: githubToken || process.env.GITHUB_TOKEN });
   // githubUrl is already clean: "https://github.com/owner/repo"
   const [owner, repo] = githubUrl.replace("https://github.com/", "").split("/");
 
@@ -35,7 +35,7 @@ export const loadGithubRepo = async (
 ) => {
   const loader = new GithubRepoLoader(githubUrl, {
     // Fallback to environment variable if explicit token is not passed
-    accessToken: githubToken || "",
+    accessToken: githubToken || process.env.GITHUB_TOKEN || "",
     branch: "main",
     recursive: true,
     unknown: "warn",
