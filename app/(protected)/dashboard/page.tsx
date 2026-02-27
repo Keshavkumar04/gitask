@@ -88,7 +88,9 @@ export default function Dashboard() {
             </span>
             {project.fileCount && (
               <span className="block text-xs text-yellow-600 mt-1">
-                Estimated time: ~{Math.max(1, Math.ceil((project.fileCount * 7) / 60))} minutes ({project.fileCount} files)
+                Estimated time: ~
+                {Math.max(1, Math.ceil((project.fileCount * 12) / 60))} minutes
+                ({project.fileCount} files)
               </span>
             )}
           </div>

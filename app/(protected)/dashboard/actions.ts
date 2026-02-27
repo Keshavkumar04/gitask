@@ -20,7 +20,7 @@ export async function askQuestion(question: string, projectId: string) {
     WHERE 1 - ("summaryEmbedding" <=> ${vectorQuery}::vector) > .4
     AND "projectId" = ${projectId}
     ORDER BY similarity DESC
-    LIMIT 8
+    LIMIT 5
   `) as { fileName: string; sourceCode: string; summary: string }[];
 
   // console.log(
